@@ -5,12 +5,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+#include <time.h>
 
 using namespace std;
 using namespace cv;
 
 Mat detect_object(Mat src);
 void outputAngle(Mat src, vector<Point2f> candidates);
+
+time_t timer;		//interval to calculate the angle.
 
 int main()
 {
@@ -25,16 +28,15 @@ int main()
     namedWindow("source video", WINDOW_NORMAL); //create a window 
 	resizeWindow("source video", 7000, 7000);
 
-    while(1)
-    {
+    while(1){
 		Mat frame;
 
         if (!cap.read(frame)){ // if not success, break loop
         // read() decodes and captures the next frame.
-			cout<<"\n Cannot read the video file. \n";
+			cout << "\n Cannot read the video file. \n";
             break;
         }
-		Mat coloredImage = detect_object(frame);
+		Mat coloredImage = detect_object(frame);	//want this to occur on an interval maybe .5 secs
 		imshow("colored", coloredImage);
         imshow("source video", frame);
 
@@ -54,18 +56,15 @@ Mat detect_object(Mat src){
 	int upper_bound1, upper_bound2;
 	string colorToDetect;
 	Mat lower_bound_image, upper_bound_image;
-lower_bound1 = 0;
+	lower_bound1 = 0;
 	lower_bound2 = 27;
 	upper_bound1 = 155;
 	upper_bound2 = 170;
 	
-
 	inRange(src_hsv, Scalar(lower_bound1,100,100), Scalar(lower_bound2,255,255), lower_bound_image);
 	inRange(src_hsv, Scalar(upper_bound1,100,100), Scalar(upper_bound2,255,255), upper_bound_image);
 
-
 	addWeighted(lower_bound_image, 1.0, upper_bound_image, 1.0, 0.0, src_colored);	
-
 
 	RNG rng(12345);
 	Mat output;
@@ -89,19 +88,23 @@ lower_bound1 = 0;
 
 	//checking the radii, making sure greater than 100 for these purposes. -- can change
 	vector<Point2f> candidates;
+	double largest_radius = 0;
+	double largest_idx = -1;
 	for(size_t i = 0; i < radius.size(); i++){
-		//cout << center[i].x << endl;
-		if(radius[i] > 2){
-			//cout << "center: " << center[i] << endl;
-			candidates.push_back(center[i]);
+		if(radius[i] > largest_radius && radius[i] > 3){
+			largest_radius = radius[i];
+			largest_idx = i;
 		}
 	//	cout << "center: " << center[i] << "       " << "radius: " << radius[i] << endl;
 	}
-
-	//now have a vector of possible icons that we want to explore
-	//so now we check to see if the color matches by checking the colored picture
-	//checking for which direction to output based on the candidates' x,y value
-	outputAngle(src, candidates); 
+	//push the largest on
+	if(largest_idx != -1){
+		candidates.push_back(center[largest_idx]);
+		outputAngle(src, candidates); 
+	}
+	else{
+		cout << "Nothing detected, Angle to travel : -1" << endl;
+	}
 
 	//drawing contours and rectangless and circles -- maybe not totally necessary -- only for the candidates
 
