@@ -1,4 +1,0 @@
-CFLAGS = `pkg-config --cflags opencv`
-LIBS = `pkg-config --libs opencv`
-detect : detect.cpp
-	g++ detect $(CFLAGS) $(LIBS) -o  
