@@ -13,7 +13,7 @@ using namespace cv;
 Mat detect_object(Mat src);
 void outputAngle(Mat src, vector<Point2f> candidates);
 
-time_t timer;		//interval to calculate the angle.
+int frameCount = 0;
 
 int main()
 {
@@ -36,14 +36,20 @@ int main()
 			cout << "\n Cannot read the video file. \n";
             break;
         }
-		Mat coloredImage = detect_object(frame);	//want this to occur on an interval maybe .5 secs
-		imshow("colored", coloredImage);
+		if(frameCount % 5 == 0){
+			Mat coloredImage = detect_object(frame);	//want this to occur on an interval maybe .5 secs
+			imshow("colored", coloredImage);
+		}
+		//imshow("colored", coloredImage);
         imshow("source video", frame);
 
 		if(waitKey(30) == 27) //'esc' key to exit
         { 
             break; 
         }
+
+		frameCount++;
+		cout << frameCount << endl;
     }
 
     return 0;

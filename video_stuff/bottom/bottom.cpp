@@ -33,18 +33,18 @@ int main(){
 	namedWindow("source video", WINDOW_NORMAL); //create a window 
 	resizeWindow("source video", 4000, 4000);
 
-while(1){
+	while(1){
 		Mat frame;
         if (!cap.read(frame)){ // if not success, break loop
         // read() decodes and captures the next frame.
 			cout<<"\n Cannot read the video file. \n";
-            break;
+            continue;
         }
 		numOfIterations++;
 		Mat colored_img = color(frame);
 		findSquares(colored_img, squares);
 		drawSquares(colored_img, squares);
-		imshow("colored", colored_img);
+		//imshow("colored", colored_img);
         imshow("source video", frame);
 
 		if(waitKey(30) == 27){ // 'esc' to quit
@@ -181,18 +181,83 @@ static double angle( Point pt1, Point pt2, Point pt0 )
 static void drawSquares( Mat& image, const vector<vector<Point> >& squares )
 {
     Mat image_color;
+	Mat drawn_squares(image.size().height, image.size().width, CV_8UC3, Scalar(0,0,0));
 	cvtColor(image, image_color, CV_GRAY2BGR);
+	//cvtColor(image, drawn_squares, CV_GRAY2BGR);
 	//cout << "squares size: " << squares.size() << endl;
 	for( size_t i = 0; i < squares.size(); i++ ){
         const Point* p = &squares[i][0];
         int n = (int)squares[i].size();
         polylines(image_color, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
+        polylines(drawn_squares, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
 	}
+
+	//drawn_squares just holds the drawn image
+	string blank = "BLANK IMAGE";
+    imshow(blank, drawn_squares);
 
 /**************************************************************************************/
 
 	//finding the angle to travel
+	//do this by making a bounding rect on the drawn_image, and we will get the endpoints
 
+	RNG rng(12345);	
+	Mat another_image;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+//	threshold( drawn_squares, another_image, 100, 255, THRESH_BINARY );
+	/// Find contours
+	cvtColor(drawn_squares, another_image, CV_BGR2GRAY);
+	findContours( another_image, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+	/// Find the rotated rectangles and ellipses for each contour
+	vector<RotatedRect> minRect( contours.size() );
+	vector<RotatedRect> minEllipse( contours.size() );
+
+	for( int i = 0; i < contours.size(); i++ ){
+    	minRect[i] = minAreaRect( Mat(contours[i]) );
+        if( contours[i].size() > 5 ){
+        	minEllipse[i] = fitEllipse( Mat(contours[i]) );
+		}
+    }
+
+	/// Draw contours + rotated rects + ellipses
+	Mat drawing = Mat::zeros( another_image.size(), CV_8UC3 );
+	for( int i = 0; i< contours.size(); i++ ){
+    	Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        // contour
+        drawContours( drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+        // ellipse
+        //ellipse( drawing, minEllipse[i], color, 2, 8 );
+        // rotated rectangle
+        Point2f rect_points[4]; minRect[i].points( rect_points );
+        for( int j = 0; j < 4; j++ ){
+          line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
+		}
+    }
+
+	string another = "another image";
+    imshow(another, drawing);
+
+	//have the vertices of the rectangle, now calculate the angle to travel
+	//assume only 2 that we have found
+	Point2f first[4];
+	Point2f second[4];
+
+	if(minRect.size() > 0){
+		minRect[0].points(first);
+		cout << "ITERATIONS: " << numOfIterations << endl;
+		cout << "The angle to travel for the first rectangle is: " << minRect[0].angle << endl;
+	}
+	if(minRect.size() >= 2){
+		minRect[1].points(second);
+		cout << "The angle to travel for the second rectangle is: " << minRect[1].angle << endl;
+	}
+
+
+
+/*
 	//try to find the longest contour.
 	int longest=0,longest_idx=-1;
 	for(size_t i = 0; i < squares.size(); i++){
@@ -208,63 +273,23 @@ static void drawSquares( Mat& image, const vector<vector<Point> >& squares )
 	
 		double angle = atan2(end.y - start.y, end.x - start.x);
 		if(angle < 0) { angle  = angle + 360; }
-		cout << "angle: " << angle << endl;;
+		//cout << "angle: " << angle << endl;;
 		line(image_color, start, end, Scalar(0,0,255), 3, 8);
 	}
 
 	if(squares.size() > 0){
-		cout << "frame count = " << numOfIterations << endl;
+		//cout << "frame count = " << numOfIterations << endl;
 		stringstream ss;
 		ss << numOfIterations;
 		string str = ss.str();
 		imwrite("test" + str + ".png" , image_color);
 		cout << endl;
 	}
-
+*/
 	string wndname = "Detected tape";
     imshow(wndname, image_color);
 
 }
-/*	//now draw a line connecting these longest points
-	if(longest_idx != -1){
-		//cout << "before  init" << endl;
-	//		cout << squares[longest_idx][0].x << "	" << squares[longest_idx][0].y << endl;
-	
-		Point start(squares[longest_idx][0].x, squares[longest_idx][0].y);
-		Point end(squares[longest_idx][longest - 1].x, squares[longest_idx][longest - 1].y);
-		if(start.x >= end.x && start.y >= end.y){
-			string dir =  "upleft";
-		}
-		else if(start.x >= end.x && start.y <= end.y){
-			string dir = "downleft";
-		}
-		else if(start.x <= end.x && start.y >= end.y){
-			string dir = "upright";
-		}
-		else{
-			string dir = "downright";
-		}
-
-		cout <<"start: " << start << "	end: " << end << endl;
-		
-		line(image_color, start, end, Scalar(0,0,255), 3, 8);
-	}
-
-	//int leg_y = abs(end.y - start.y);
-	//int leg_x = abs(end.x- start.x);
-	//double length = hypot(leg_x, leg_y);
-
-//	if(length > src.width() / 4){
-		//this is the long  side, so find the angle of it
-		
-//	}
-//	else{
-		//short side, find the angle and flip it
-	
-//	}
-*/	
-
-
 
 
 

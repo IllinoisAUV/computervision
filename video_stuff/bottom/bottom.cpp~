@@ -4,7 +4,10 @@
 #include "highgui.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <iostream>
+#include <string>
+#include <sstream>
 
 using namespace std;
 using namespace cv;
@@ -12,7 +15,9 @@ using namespace cv;
 static void findSquares(const Mat& image, vector<vector<Point> >& squares);
 static double angle( Point pt1, Point pt2, Point pt0 );
 static void drawSquares( Mat& image, const vector<vector<Point> >& squares );
-Mat color(Mat &image);
+Mat color(Mat &src);
+
+int numOfIterations=0;
 
 int main(){
 
@@ -28,18 +33,19 @@ int main(){
 	namedWindow("source video", WINDOW_NORMAL); //create a window 
 	resizeWindow("source video", 4000, 4000);
 
-while(1){
+	while(1){
 		Mat frame;
         if (!cap.read(frame)){ // if not success, break loop
         // read() decodes and captures the next frame.
 			cout<<"\n Cannot read the video file. \n";
-            break;
+            continue;
         }
+		numOfIterations++;
 		Mat colored_img = color(frame);
-		findSquares(frame, squares);
-		drawSquares(frame, squares);
-		//imshow("colored", coloredImage);
-        	imshow("source video", frame);
+		findSquares(colored_img, squares);
+		drawSquares(colored_img, squares);
+		//imshow("colored", colored_img);
+        imshow("source video", frame);
 
 		if(waitKey(30) == 27){ // 'esc' to quit
             break; 
@@ -49,13 +55,7 @@ while(1){
     return 0;
 }
 
-Mat color(Mat &image){
-
-}
-
-static void findSquares( const Mat& image, vector<vector<Point> >& squares )
-{
-    //convert image to orange
+Mat color(Mat &src){
 	Mat src_hsv, src_colored;
 	cvtColor(src, src_hsv, COLOR_BGR2HSV);
 	int lower_bound1, lower_bound2;
@@ -71,13 +71,26 @@ static void findSquares( const Mat& image, vector<vector<Point> >& squares )
 	inRange(src_hsv, Scalar(upper_bound1,100,100), Scalar(upper_bound2,255,255), upper_bound_image);
 
 	addWeighted(lower_bound_image, 1.0, upper_bound_image, 1.0, 0.0, src_colored);	
+	return src_colored;
 
+	//thresholding without color	NO GOOD
+/*	Mat src_thresh, src_gray;
+	int threshold_value = 200, max_BINARY_VALUE = 255, threshold_type = 1;
+	cvtColor(src, src_gray, CV_BGR2GRAY);
+	threshold(src_gray, src_thresh, threshold_value, max_BINARY_VALUE, threshold_type);
+	src_thresh.convertTo(src_thresh, CV_8UC1);
+	return src_thresh;
+*/
+}
 
+static void findSquares( const Mat& image, vector<vector<Point> >& squares )
+{
 	int N = 11;
 	int thresh = 50;
 	squares.clear();
 
     Mat pyr, timg, gray0(image.size(), CV_8U), gray;
+
 
     // down-scale and upscale the image to filter out the noise
     pyrDown(image, pyr, Size(image.cols/2, image.rows/2));
@@ -88,7 +101,7 @@ static void findSquares( const Mat& image, vector<vector<Point> >& squares )
     for( int c = 0; c < 3; c++ )
     {
         int ch[] = {c, 0};
-        mixChannels(&timg, 1, &gray0, 1, ch, 1);
+       // mixChannels(&timg, 1, &gray0, 1, ch, 1);
 
         // try several threshold levels
         for( int l = 0; l < N; l++ )
@@ -99,7 +112,7 @@ static void findSquares( const Mat& image, vector<vector<Point> >& squares )
             {
                 // apply Canny. Take the upper threshold from slider
                 // and set the lower to 0 (which forces edges merging)
-                Canny(gray0, gray, 0, thresh, 5);
+                Canny(image, gray, 0, thresh, 5);
                 // dilate canny output to remove potential
                 // holes between edge segments
                 dilate(gray, gray, Mat(), Point(-1,-1));
@@ -108,12 +121,12 @@ static void findSquares( const Mat& image, vector<vector<Point> >& squares )
             {
                 // apply threshold if l!=0:
                 //     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
-                gray = gray0 >= (l+1)*255/N;
+                gray = image >= (l+1)*255/N;
             }
 
             // find contours and store them all as a list
             findContours(gray, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
-
+//		cout << "Size of contours: " << contours.size() << endl;
             vector<Point> approx;
 
             // test each contour
@@ -167,12 +180,103 @@ static double angle( Point pt1, Point pt2, Point pt0 )
 
 static void drawSquares( Mat& image, const vector<vector<Point> >& squares )
 {
-    for( size_t i = 0; i < squares.size(); i++ )
-    {
+    Mat image_color;
+	Mat drawn_squares(image.size().height, image.size().width, CV_8UC3, Scalar(0,0,0));
+	cvtColor(image, image_color, CV_GRAY2BGR);
+	//cvtColor(image, drawn_squares, CV_GRAY2BGR);
+	//cout << "squares size: " << squares.size() << endl;
+	for( size_t i = 0; i < squares.size(); i++ ){
         const Point* p = &squares[i][0];
         int n = (int)squares[i].size();
-        polylines(image, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
-    }
-	string wndname = "i dont know";
-    imshow(wndname, image);
+        polylines(image_color, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
+        polylines(drawn_squares, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
+	}
+
+	//drawn_squares just holds the drawn image
+	string blank = "BLANK IMAGE";
+    imshow(blank, drawn_squares);
+
+/**************************************************************************************/
+
+	//finding the angle to travel
+	//do this by making a bounding rect on the drawn_image, and we will get the endpoints
+	
+	Mat another_image;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+	threshold( src_gray, threshold_output, thresh, 255, THRESH_BINARY );
+	  /// Find contours
+	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+  /// Find the rotated rectangles and ellipses for each contour
+  vector<RotatedRect> minRect( contours.size() );
+  vector<RotatedRect> minEllipse( contours.size() );
+
+  for( int i = 0; i < contours.size(); i++ )
+     { minRect[i] = minAreaRect( Mat(contours[i]) );
+       if( contours[i].size() > 5 )
+         { minEllipse[i] = fitEllipse( Mat(contours[i]) ); }
+     }
+
+  /// Draw contours + rotated rects + ellipses
+  Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+  for( int i = 0; i< contours.size(); i++ )
+     {
+       Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+       // contour
+       drawContours( drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+       // ellipse
+       ellipse( drawing, minEllipse[i], color, 2, 8 );
+       // rotated rectangle
+       Point2f rect_points[4]; minRect[i].points( rect_points );
+       for( int j = 0; j < 4; j++ )
+          line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
+     }
+
+
+
+
+
+
+
+
+
+
+
+
+	//try to find the longest contour.
+	int longest=0,longest_idx=-1;
+	for(size_t i = 0; i < squares.size(); i++){
+		if(squares[i].size() > longest){
+			longest = squares[i].size();
+			longest_idx = i;
+		}
+	}
+	
+	if(longest_idx != -1){
+		Point start(squares[longest_idx][0].x, squares[longest_idx][0].y);
+		Point end(squares[longest_idx][longest - 1].x, squares[longest_idx][longest - 1].y);
+	
+		double angle = atan2(end.y - start.y, end.x - start.x);
+		if(angle < 0) { angle  = angle + 360; }
+		cout << "angle: " << angle << endl;;
+		line(image_color, start, end, Scalar(0,0,255), 3, 8);
+	}
+
+	if(squares.size() > 0){
+		cout << "frame count = " << numOfIterations << endl;
+		stringstream ss;
+		ss << numOfIterations;
+		string str = ss.str();
+		imwrite("test" + str + ".png" , image_color);
+		cout << endl;
+	}
+
+	string wndname = "Detected tape";
+    imshow(wndname, image_color);
+
 }
+
+
+
