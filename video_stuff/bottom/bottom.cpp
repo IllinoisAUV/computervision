@@ -71,6 +71,7 @@ Mat color(Mat &src){
 	inRange(src_hsv, Scalar(upper_bound1,100,100), Scalar(upper_bound2,255,255), upper_bound_image);
 
 	addWeighted(lower_bound_image, 1.0, upper_bound_image, 1.0, 0.0, src_colored);	
+
 	return src_colored;
 
 	//thresholding without color	NO GOOD
@@ -186,10 +187,10 @@ static void drawSquares( Mat& image, const vector<vector<Point> >& squares )
 	//cvtColor(image, drawn_squares, CV_GRAY2BGR);
 	//cout << "squares size: " << squares.size() << endl;
 	for( size_t i = 0; i < squares.size(); i++ ){
-        const Point* p = &squares[i][0];
-        int n = (int)squares[i].size();
-        polylines(image_color, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
-        polylines(drawn_squares, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
+        	const Point* p = &squares[i][0];
+        	int n = (int)squares[i].size();
+        	polylines(image_color, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
+        	polylines(drawn_squares, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
 	}
 
 	//drawn_squares just holds the drawn image
