@@ -8,15 +8,21 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <cv.h>
 
 using namespace std;
 using namespace cv;
+
+Mat color(Mat &src);
+void moments(Mat &src_hsv);
+void Dilation(int, void*);
+void Erosion(int, void*);
 
 int frame_count=0;
 
 int main(){
 
-	VideoCapture cap("torpedo_vid.mp4");
+	VideoCapture cap("red.mp4");
 	if(!cap.isOpened()){
 		cout << "Cannot open the video file. \n";
 		return -1;
@@ -36,24 +42,10 @@ int main(){
    		    break;
     	}
 		frame_count++;
-		if(frame_count % 1 == 0){
-			//edges(frame);
-			//Mat colored_img = color(frame);
-			Mat gray;
-			cvtColor(frame, gray, CV_BGR2GRAY);
-			equalizeHist(gray,gray);
-			Mat bilat = Mat::zeros(gray.size(), gray.type());
-			for ( int i = 1; i < 31; i = i + 2 ){
-        		bilateralFilter ( gray, bilat, i, i*2, i/2 );
-            	//if( display_dst( DELAY_BLUR ) != 0 ) { return 0; }
-			}
-
-			
-			imshow("equalized", gray);
-			//corners(src);
-			//moments(gray);
-			findSquares(gray, squares);
-			drawSquares(gray, squares);
+		if(frame_count % 10 == 0){
+			Mat colored_img = color(frame);
+			moments(colored_img);
+			imshow("hsv", colored_img);
 		}
 		//imshow("colored", colored_img);
 	    imshow("source video", frame);
@@ -71,10 +63,10 @@ Mat color(Mat &src){
 	int upper_bound1, upper_bound2;
 	string colorToDetect;
 	Mat lower_bound_image, upper_bound_image;
-	lower_bound1 = 0;
-	lower_bound2 = 60;
-	upper_bound1 = 0;
-	upper_bound2 = 60;
+	lower_bound1 = 160;
+	lower_bound2 = 179;
+	upper_bound1 = 160;
+	upper_bound2 = 179;
 
 	inRange(src_hsv, Scalar(lower_bound1,100,100), Scalar(lower_bound2,255,255), lower_bound_image);
 	inRange(src_hsv, Scalar(upper_bound1,100,100), Scalar(upper_bound2,255,255), upper_bound_image);
@@ -84,171 +76,79 @@ Mat color(Mat &src){
 }
 
 
-static double angle( Point pt1, Point pt2, Point pt0 )
-{
-    double dx1 = pt1.x - pt0.x;
-    double dy1 = pt1.y - pt0.y;
-    double dx2 = pt2.x - pt0.x;
-    double dy2 = pt2.y - pt0.y;
-    return (dx1*dx2 + dy1*dy2)/sqrt((dx1*dx1 + dy1*dy1)*(dx2*dx2 + dy2*dy2) + 1e-10);
-}
-
-// returns sequence of squares detected on the image.
-// the sequence is stored in the specified memory storage
-static void findSquares( const Mat& image, vector<vector<Point> >& squares )
-{
-    int N = 11;
-	int thresh = 50;
-	squares.clear();
-
-    Mat pyr, timg, gray0(image.size(), CV_8U), gray;
-
-    // down-scale and upscale the image to filter out the noise
-    pyrDown(image, pyr, Size(image.cols/2, image.rows/2));
-    pyrUp(pyr, timg, image.size());
-    vector<vector<Point> > contours;
-
-    // find squares in every color plane of the image
-    for( int c = 0; c < 3; c++ )
-    {
-        int ch[] = {c, 0};
-        //mixChannels(&timg, 1, &gray0, 1, ch, 1);
-
-        // try several threshold levels
-        for( int l = 0; l < N; l++ )
-        {
-            // hack: use Canny instead of zero threshold level.
-            // Canny helps to catch squares with gradient shading
-            if( l == 0 )
-            {
-                // apply Canny. Take the upper threshold from slider
-                // and set the lower to 0 (which forces edges merging)
-                Canny(gray0, gray, 0, thresh, 5);
-                // dilate canny output to remove potential
-                // holes between edge segments
-                dilate(gray, gray, Mat(), Point(-1,-1));
-            }
-            else
-            {
-                // apply threshold if l!=0:
-                //     tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
-                gray = gray0 >= (l+1)*255/N;
-            }
-
-            // find contours and store them all as a list
-            findContours(gray, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
-
-            vector<Point> approx;
-
-            // test each contour
-            for( size_t i = 0; i < contours.size(); i++ )
-            {
-                // approximate contour with accuracy proportional
-                // to the contour perimeter
-                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*0.02, true);
-
-                // square contours should have 4 vertices after approximation
-                // relatively large area (to filter out noisy contours)
-                // and be convex.
-                // Note: absolute value of an area is used because
-                // area may be positive or negative - in accordance with the
-                // contour orientation
-                if( approx.size() == 4 &&
-                    fabs(contourArea(Mat(approx))) > 1000 &&
-                    isContourConvex(Mat(approx)) )
-                {
-                    double maxCosine = 0;
-
-                    for( int j = 2; j < 5; j++ )
-                    {
-                        // find the maximum cosine of the angle between joint edges
-                        double cosine = fabs(angle(approx[j%4], approx[j-2], approx[j-1]));
-                        maxCosine = MAX(maxCosine, cosine);
-                    }
-
-                    // if cosines of all angles are small
-                    // (all angles are ~90 degree) then write quandrange
-                    // vertices to resultant sequence
-                    if( maxCosine < 0.3 )
-                        squares.push_back(approx);
-                }
-            }
-        }
-    }
-}
-
-
-// the function draws all the squares in the image
-static void drawSquares( Mat& image, const vector<vector<Point> >& squares )
-{
-    Mat image_color;
-	cvtColor(image, image_color, CV_GRAY2BGR);
-	cout << "size of squares: " << squares.size() << endl;
+void moments(Mat &src_hsv){
 	
-	for( size_t i = 0; i < squares.size(); i++ )
-    {
-        const Point* p = &squares[i][0];
-        int n = (int)squares[i].size();
-        polylines(image_color, &p, &n, 1, true, Scalar(0,255,0), 3, 8);
-    }
-	string wndname = "Detected Squares";	
-    imshow(wndname, image_color);
-}
-
-void edges(Mat &src){
-	Mat color_eq;
-	Mat gray;
-	cvtColor(src, gray, CV_BGR2GRAY);
-	equalizeHist(gray, gray);
-	imshow("grAY", gray);
+	int low_threshold = 100;
 	Mat detected_edges;
-	blur(gray, detected_edges, Size(3,3));
-	Canny(detected_edges, detected_edges, 0, 300, 3);
-	//Mat dst = Scalar::all(0);
-	//src.copyTo(dst, detected_edges);
-	imshow("edges", detected_edges);
-}
+	blur(src_hsv, detected_edges, Size(3,3));
+	Canny(detected_edges, detected_edges, low_threshold, 3 * low_threshold, 3);
+	imshow("canny edges", detected_edges);	
 
-void moments(Mat &src_gray){
-	blur( src_gray, src_gray, Size(3,3) );
-	threshold(src_gray, src_gray, 225, 255, 3);
-	int thresh = 100; int max_thresh = 255; RNG rng(12345);
-	Mat canny_output;	
+	Mat src_contours = detected_edges;
+
+	GaussianBlur(src_contours, src_contours, Size(3,3), 0, 0);
+	imshow("blurred",src_contours);
+	
+	RNG rng(12345);
+	Mat output;
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
+		
+	//findContours function
+	findContours(src_contours, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0,0));
 
-	Canny( src_gray, canny_output, thresh, thresh*2, 3 );
-	findContours( canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-
-	vector<Moments> mu(contours.size() );
-	for( int i = 0; i < contours.size(); i++ )
-	{ mu[i] = moments( contours[i], false ); }
-
-  ///  Get the mass centers:
-  vector<Point2f> mc( contours.size() );
-  for( int i = 0; i < contours.size(); i++ )
-     { mc[i] = Point2f( mu[i].m10/mu[i].m00 , mu[i].m01/mu[i].m00 ); }
-
-  /// Draw contours
-  Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
-  for( int i = 0; i< contours.size(); i++ )
-     {
-		Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-       drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
-       circle( drawing, mc[i], 4, color, -1, 8, 0 );
-     }
-
-	namedWindow("targets", WINDOW_NORMAL); //create a window 
-	resizeWindow("targets", 4000, 4000);
-	imshow("targets", drawing);
-
+	//approximate the contours to get bounding rectangles and circles 
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+	vector<Point2f> center(contours.size());
+	vector<float> radius(contours.size());
 	
+	for(size_t i = 0; i < contours.size(); i++){
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+		minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
+	}
 
 
+	vector<double> radii;
+	for(int i = 0; i < contours.size(); i++){
+		radii.push_back(radius[i]);
+	
+	}
+	double largest_radius = 0;
+	double largest_radius2 = 0;
+	int largest_idx1 = -1;
+	int largest_idx2 = -1;
+	int largest_idx3 = -1;
+	
+	sort(contours);	
+	for(size_t i = 0; i < radius.size(); i++){
+		if(radius[i] > largest_radius){
+			largest_idx3 = largest_idx2;
+			largest_idx2 = largest_idx1;
+			largest_idx1 = i;
+			largest_radius2 = largest_radius;
+			largest_radius = radius[i];
+			indices.push_back(i);
+		}
+	//	cout << "center: " << center[i] << "       " << "radius: " << radius[i] << endl;
+	}
+//	indices.push_back(largest_idx1);
+//	indices.push_back(largest_idx2);
+//	indices.push_back(largest_idx3);
 
 
-
-
-
-
+	Mat drawing = Mat::zeros(src_contours.size(), CV_8UC3);
+	for(size_t i = 0; i < indices.size(); i++){
+		int idx = indices[i];
+		Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0,255), rng.uniform(0,255));
+		drawContours(drawing, contours_poly, idx, color, 1, 8, vector<Vec4i>(), 0, Point());
+		//rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+		//circle(drawing, center[idx], (int)radius[idx], color, 2, 8, 0);
+	}
+	
+	namedWindow("Color Contours", WINDOW_NORMAL);
+	resizeWindow("Color Contours", 600,600);
+	imshow("Color Contours", drawing);
 }
+

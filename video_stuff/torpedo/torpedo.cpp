@@ -15,6 +15,8 @@ using namespace cv;
 
 Mat color(Mat &src);
 void moments(Mat &src_hsv);
+void Dilation(int, void*);
+void Erosion(int, void*);
 
 int frame_count=0;
 
@@ -26,7 +28,6 @@ int main(){
 		return -1;
 	}
    
-//	double fps = cap.get(CV_CAP_PROP_FPS); //
 	vector<vector<Point> > squares;
 
 	namedWindow("source video", WINDOW_NORMAL); //create a window 
@@ -40,7 +41,7 @@ int main(){
    		    break;
     	}
 		frame_count++;
-		if(frame_count % 1 == 0){
+		if(frame_count % 10 == 0){
 			Mat colored_img = color(frame);
 			moments(colored_img);
 			imshow("hsv", colored_img);
@@ -82,76 +83,71 @@ void moments(Mat &src_hsv){
 	Canny(detected_edges, detected_edges, low_threshold, 3 * low_threshold, 3);
 	imshow("canny edges", detected_edges);	
 
-/*	blur( src_gray, src_gray, Size(3,3) );
-	threshold(src_gray, src_gray, 245, 255, 3);
-	int thresh = 100; int max_thresh = 255; RNG rng(12345);
-	Mat canny_output;	
+	Mat src_contours = detected_edges;
+
+	GaussianBlur(src_contours, src_contours, Size(3,3), 0, 0);
+	imshow("blurred",src_contours);
+	
+	RNG rng(12345);
+	Mat output;
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
+		
+	//findContours function
+	findContours(src_contours, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0,0));
 
-	Canny( src_gray, canny_output, thresh, thresh*2, 3 );
-	findContours( canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-
-	vector<Moments> mu(contours.size() );
-	for( int i = 0; i < contours.size(); i++ )
-	{ mu[i] = moments( contours[i], false ); }
-
-  ///  Get the mass centers:
-  vector<Point2f> mc( contours.size() );
-  for( int i = 0; i < contours.size(); i++ )
-     { mc[i] = Point2f( mu[i].m10/mu[i].m00 , mu[i].m01/mu[i].m00 ); }
-
-  /// Draw contours
-  Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
-  for( int i = 0; i< contours.size(); i++ )
-     {
-		Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-       drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
-       circle( drawing, mc[i], 4, color, -1, 8, 0 );
-     }
-	cout << "size" << contours.size() << endl;
-*/
-
-/*	IplImage* src_h = src_hsv.clone();
-	IplImage* drawing = src_hsv.clone();
-	CvSeq* contours;
-	CvSeq* result;	
-	CvMemStorage *storage = cvCreateMemStorage(0);
-	cvFindContours(src_h, storage, &contours, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
-
-	while(contours){
-		result = cvApproxPoly(contours, sizeof(CvContour), storage, CV_POLY_APPROX_DP, cvContourPerimeter(contours)*0.02, 0);
-		if(result->total == 6){
-			CvPoint* pt[6];
-			for(int i =0; i < 6; i++){
-				pt[i] = (CvPoint*)cvGetSeqElem(result,i);
-			}
-			cvLine(drawing, *pt[0], *pt[1], cvScalar(0,255,0),4);
-			cvLine(drawing, *pt[1], *pt[2], cvScalar(0,255,0),4);
-			cvLine(drawing, *pt[2], *pt[3], cvScalar(0,255,0),4);
-			cvLine(drawing, *pt[3], *pt[4], cvScalar(0,255,0),4);
-			cvLine(drawing, *pt[4], *pt[5], cvScalar(0,255,0),4);
-			cvLine(drawing, *pt[5], *pt[6], cvScalar(0,255,0),4);
-		}
+	//approximate the contours to get bounding rectangles and circles 
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+	vector<Point2f> center(contours.size());
+	vector<float> radius(contours.size());
+	
+	for(size_t i = 0; i < contours.size(); i++){
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+		minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
 	}
 
-*/	
 
+	vector<double> radii;
+	for(int i = 0; i < contours.size(); i++){
+		radii.push_back(radius[i]);
 	
-	//imshow("targets", drawing);
+	}
+	double largest_radius = 0;
+	double largest_radius2 = 0;
+	int largest_idx1 = -1;
+	int largest_idx2 = -1;
+	int largest_idx3 = -1;
+	
+	sort(contours);	
+	for(size_t i = 0; i < radius.size(); i++){
+		if(radius[i] > largest_radius){
+			largest_idx3 = largest_idx2;
+			largest_idx2 = largest_idx1;
+			largest_idx1 = i;
+			largest_radius2 = largest_radius;
+			largest_radius = radius[i];
+			indices.push_back(i);
+		}
+	//	cout << "center: " << center[i] << "       " << "radius: " << radius[i] << endl;
+	}
+//	indices.push_back(largest_idx1);
+//	indices.push_back(largest_idx2);
+//	indices.push_back(largest_idx3);
+
+
+	Mat drawing = Mat::zeros(src_contours.size(), CV_8UC3);
+	for(size_t i = 0; i < indices.size(); i++){
+		int idx = indices[i];
+		Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0,255), rng.uniform(0,255));
+		drawContours(drawing, contours_poly, idx, color, 1, 8, vector<Vec4i>(), 0, Point());
+		//rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+		//circle(drawing, center[idx], (int)radius[idx], color, 2, 8, 0);
+	}
+	
+	namedWindow("Color Contours", WINDOW_NORMAL);
+	resizeWindow("Color Contours", 600,600);
+	imshow("Color Contours", drawing);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
