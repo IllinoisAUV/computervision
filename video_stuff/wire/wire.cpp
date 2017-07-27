@@ -20,7 +20,7 @@ int frame_count=0;
 
 int main(){
 
-	VideoCapture cap("video_wire.mp4");
+	VideoCapture cap("test.mp4");
 	if(!cap.isOpened()){
 		cout << "Cannot open the video file. \n";
 		return -1;
@@ -38,7 +38,7 @@ int main(){
 		}
 		frame_count++;
 		if(frame_count % 10 == 0){
-			
+			resize(frame, frame, Size(400,400));		
 			//stringstream ss;
 			//ss << frame_count;
 			//string str = ss.str();	
@@ -99,6 +99,10 @@ void findWires(Mat &src_colored){
 	/// Find contours
 	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
+	if(contours.size() < 3){
+		return;
+	}
+
 	/// Find the rotated rectangles and ellipses for each contour
 	vector<RotatedRect> minRect( contours.size() );
 	vector<RotatedRect> minEllipse( contours.size() );
@@ -119,24 +123,44 @@ void findWires(Mat &src_colored){
 	double big1 = maxContours[0];
 	double big2 = maxContours[1];
 	double big3 = maxContours[2];
+	
+	cout << "first = " << big1 << "	second = " << big2 << "		third = " << big3 << endl;
+
 	//get the 3 largest indices
 	int idx1 = contourMap[big1];
 	int idx2 = contourMap[big2];
 	int idx3 = contourMap[big3];
+	int minSizeContour = 150;
+	int sizeOfNewContours = 0;
+	if(big1 > minSizeContour){
+		sizeOfNewContours++;
+	}
+	if(big2 > minSizeContour){
+		sizeOfNewContours++;
+	}
+	if(big3 > minSizeContour){
+		sizeOfNewContours++;
+	}
 
 	vector<vector<Point> > newContours;
-	newContours.resize(3);
+	newContours.resize(sizeOfNewContours);
 
 //	cout << contours[idx1] << endl << contours[idx2] << endl << contours[idx3] << endl;
 //	for(int j =0; j < newContours.size(); j++){
-		for(int i = 0; i < contours[idx1].size(); i++){
-			newContours[0].push_back(contours[idx1][i]);
+		if(big1 > minSizeContour){
+				for(int i = 0; i < contours[idx1].size(); i++){
+				newContours[0].push_back(contours[idx1][i]);
+			}
 		}
-		for(int i = 0; i < contours[idx2].size(); i++){
-			newContours[1].push_back(contours[idx2][i]);
+		if(big2 > minSizeContour){
+			for(int i = 0; i < contours[idx2].size(); i++){
+				newContours[1].push_back(contours[idx2][i]);
+			}
 		}
-		for(int i = 0; i < contours[idx3].size(); i++){
-			newContours[2].push_back(contours[idx3][i]);
+		if(big3 > minSizeContour){
+			for(int i = 0; i < contours[idx3].size(); i++){
+				newContours[2].push_back(contours[idx3][i]);
+			}
 		}
 //	}
 
