@@ -22,7 +22,7 @@ int main(){
 		cout << frame_count << endl;
         frame_count++;
 
-        if(frame_count % 10 == 0 && frame_count > 2500){
+        if(frame_count % 10 == 0 && frame_count > 600){
 	    retvals = v.findTargets();
             imshow("src", v.src);
         }

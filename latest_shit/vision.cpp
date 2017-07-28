@@ -210,7 +210,7 @@ Mat Vision::color(Mat src){
 	return src_colored;
 }
 
-vector<double> Vision::outputWireAngle(Mat &src_colored){
+vector<double> Vision::outputWireAngle(Mat &src_colored1){
 	//use contour area to find the biggest contour
 	Mat threshold_output;
 	vector<vector<Point> > contours;
@@ -218,6 +218,7 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 	RNG rng(12345);
 	int thresh = 100;
 	int max_thresh = 255;
+        Mat src_colored = src_colored1(Rect(0, 0, src_colored1.cols, src_colored1.rows*9/10));
 
 	/// Detect edges using Threshold
 	threshold( src_colored, threshold_output, thresh, 255, THRESH_BINARY );
@@ -320,18 +321,29 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 	getCenter(newContours[0], drawing, retvec);
 
 	//draw target onto image
+	imshow("TARGETCIRCLE", drawing);
+        
+	( "Contours + TARGET", drawing );
+        cout << "WIRE DATA: " <<endl; 
 	return retvec;
 }
 
 
 void Vision::getCenter(vector<Point> contours, Mat &drawing, vector<double> &retvec){
 	Point pt;
-	int minx, miny = INT_MAX;
+        if(contours.size()<1)
+            return;
+        int minx = contours[0].x;
+        int miny = contours[0].y;
+        //int minx, miny = INT_MAX;
 	int maxx, maxy = INT_MIN;
 	
 	for(int i= 0; i < contours.size(); i++){
 		pt = contours[i];
+               // cout<<"x value is "<<pt.x<<" y value is "<<pt.y<<endl;
 		if(pt.x < minx){
+                       // if(pt.x == 0)
+                           // cout<<"rip"<<endl;
 			minx = pt.x;
 			miny = pt.y;
 		}
@@ -344,14 +356,16 @@ void Vision::getCenter(vector<Point> contours, Mat &drawing, vector<double> &ret
 	//calculate y as .6 * length of this
 	double yup = .6 * (maxx - minx);
 	//point to go to is 
-	double x = (maxx - minx);	
-
-	double y = (maxy - miny);
-	y += yup;
+	double x = (maxx + minx)/2;	
+       // cout<<"min x is "<<minx<<" maxx is "<<maxx<<endl;
+       // cout<<"min y "<<miny<<" max y "<<maxy<<endl;
+	double y = maxy;
+        y -= yup;
+       // cout<<"x "<<x<<" y "<<y<<endl;
 
 	//draw the target
 	circle(drawing, Point(x,y), 5, Scalar(0, 255, 0), 3, 8, 0);
-        imshow("WIRE TARGFET" , drawing);
+        //imshow("WIRE TARGFET" , drawing);
 
 	wireAngle(x, y, retvec);
 
