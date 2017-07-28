@@ -85,7 +85,7 @@ Mat color(Mat &src){
 	return src_colored;
 }
 
-void findWires(Mat &src_colored){
+vector<double> findWires(Mat &src_colored){
 	//use contour area to find the biggest contour
 	Mat threshold_output;
 	vector<vector<Point> > contours;
