@@ -170,6 +170,8 @@ void findWires(Mat &src_colored){
          { minEllipse[i] = fitEllipse( Mat(newContours[i]) ); }
      }
 
+     double center = getCenter(newContours[0]);
+
   /// Draw contours + rotated rects + ellipses
 	 Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
   for( int i = 0; i< newContours.size(); i++ )
@@ -189,6 +191,28 @@ void findWires(Mat &src_colored){
   namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
   imshow( "Contours", drawing );
 }
+
+
+double getCenter(vector<Point> contours){
+	double minx, maxx;
+	if(contours.size()<1)
+		return -1;
+	minx = contours[0].x();
+	maxx = minx;
+	for (int i = 0; i<contours.size(); i++)
+	{
+		if(contours[i].x()>maxx)
+			maxx = contours[i].x();
+		else if(contours[i].(x)<minx)
+			minx = contours[i].x();
+	}
+	return (minx+maxx)/2;
+
+}
+
+// boolean isHorizontal(int minX, int maxX, int minY, int maxY) {
+
+// }
 
 
 
