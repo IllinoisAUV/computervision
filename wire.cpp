@@ -198,7 +198,7 @@ double getCenter(vector<Point> contours){
 		return -1;
 	minx = contours[0].getX();
 	maxx = minx;
-	double outY = contours[0].y();
+	double outY = contours[0].getY();
 	for (int i = 0; i<contours.size(); i++)
 	{
 		if(contours[i].getX()>maxx)
