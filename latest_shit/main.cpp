@@ -19,14 +19,19 @@ int main(){
    		    break;
 	    }
         resize(v.src, v.src, Size(480, 640));
+
+		cv:: Mat image(v.src);
+        cv:: Rect crop(0,0, 460, 600);
+		v.src = image(crop);
+		
 		cout << frame_count << endl;
         frame_count++;
-
-        if(frame_count % 10 == 0 && frame_count > 600){
+ 		
+        if(frame_count % 10 == 0 && frame_count > 0){
 	    retvals = v.findTargets();
             imshow("src", v.src);
         }
-		cout << endl << "vgate_angle: " << retvals.vgate_angle<< " vgate_radius: " << retvals.vgate_radius << " vgate_area: " << retvals.vgate_area << " buoy_angle: " << retvals.buoy_angle << " buoy_radius: " << retvals.buoy_radius << " buoy_area: " << retvals.buoy_area << " wire_angle: " << retvals.wire_angle << " wire_radius: " << retvals.wire_radius << " wire_area: " << retvals.wire_area << endl;
+		//cout << endl << "vgate_angle: " << retvals.vgate_angle<< " vgate_radius: " << retvals.vgate_radius << " vgate_area: " << retvals.vgate_area << " buoy_angle: " << retvals.buoy_angle << " buoy_radius: " << retvals.buoy_radius << " buoy_area: " << retvals.buoy_area << " wire_angle: " << retvals.wire_angle << " wire_radius: " << retvals.wire_radius << " wire_area: " << retvals.wire_area << endl;
 
 
         if(waitKey(30) == 27){ // 'esc' to quit

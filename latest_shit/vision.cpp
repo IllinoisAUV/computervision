@@ -13,7 +13,6 @@ targets_data Vision::findTargets(){
 	ret.buoy_radius = r[1];
 	ret.buoy_area = r[2];
 	Mat src_colored = color(this->src);
-        imshow("scoolored, " , src_colored);
 	r = outputWireAngle(src_colored);
 	ret.wire_angle = r[0];
 	ret.wire_radius = r[1];
@@ -27,21 +26,26 @@ targets_data Vision::findTargets(){
 
 vector<double> Vision::detect_buoy(Mat src){
     Mat src_hsv, src_colored;
-    cvtColor(src, src_hsv, COLOR_BGR2HSV);
+	medianBlur(src, src, 9);
+		
+    cvtColor(src, src_hsv, COLOR_BGR2HSV);	
+	imshow("hsv", src_hsv);
     int lower_bound1, lower_bound2;
     int upper_bound1, upper_bound2;
     string colorToDetect;
     Mat lower_bound_image, upper_bound_image;
-    lower_bound1 = 22;
-    lower_bound2 = 38;
-    upper_bound1 = 22;
-    upper_bound2 = 38;
+    lower_bound1 = 1;
+    lower_bound2 = 40;
+    upper_bound1 = 1;
+    upper_bound2 = 40;
 	
     //filtering for color
     inRange(src_hsv, Scalar(lower_bound1,100,100), Scalar(lower_bound2,255,255), lower_bound_image);
     inRange(src_hsv, Scalar(upper_bound1,100,100), Scalar(upper_bound2,255,255), upper_bound_image);
 
     addWeighted(lower_bound_image, 1.0, upper_bound_image, 1.0, 0.0, src_colored);	
+
+	imshow("buoy hsv", src_colored);
 
 
     //src colored is our filtered img
@@ -61,29 +65,30 @@ vector<double> Vision::detect_buoy(Mat src){
 	
     for(size_t i = 0; i < contours.size(); i++){
     	approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
-	boundRect[i] = boundingRect(Mat(contours_poly[i]));
-	minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+		minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
     }
 
     //checking the radii, making sure greater than 100 for these purposes. -- can change
     vector<Point2f> candidates;
     double largest_radius = 0;
     double largest_idx = -1;
-    for(size_t i = 0; i < radius.size(); i++){
-		if(radius[i] > largest_radius && radius[i] > 20){
-            largest_radius = radius[i];
-            cout << radius[i] << endl;
-	    largest_idx = i;
-		}
+    for(size_t i = 0; i < contours.size(); i++){
+		if(contourArea(contours[i]) > largest_radius && contourArea(contours[i]) > 0){
+			largest_radius = contourArea(contours[i]);
+
+	    	largest_idx = i;
+		}	
 		//	cout << "center: " << center[i] << "       " << "radius: " << radius[i] << endl;
     }
 
 	//push the largest on
-        vector<double> rvec;
+	vector<double> rvec;
+
+
 	if(largest_idx != -1){
-	    cout << " FOUND IT ON FRAME" << endl;
         candidates.push_back(center[largest_idx]);
-	     outputBuoyAngle(src, candidates, rvec); 
+	    outputBuoyAngle(src, candidates, rvec); 
 	}
 	else{
 	    cout << "Nothing detected, Angle to travel : -1" << endl;
@@ -92,8 +97,8 @@ vector<double> Vision::detect_buoy(Mat src){
 		rvec.push_back(-1);
 		return rvec;
 	}
+	cout << "BUOY CONTOUR AREA: " <<  contourArea(contours[largest_idx]) << endl;;
 
-        cout << __LINE__ << endl;
     Mat drawing = Mat::zeros(src_colored.size(), CV_8UC3);
    	Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0,255), rng.uniform(0,255));
 	drawContours(drawing, contours_poly, largest_idx, color, 1, 8, vector<Vec4i>(), 0, Point());
@@ -226,7 +231,7 @@ vector<double> Vision::outputWireAngle(Mat &src_colored1){
 	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
 
-        imshow("WIRE THREASHOLD", threshold_output);
+        //imshow("WIRE THREASHOLD", threshold_output);
 
 	if(contours.size() < 3){
 		vector<double> r;
@@ -314,14 +319,14 @@ vector<double> Vision::outputWireAngle(Mat &src_colored1){
        for( int j = 0; j < 4; j++ )
           line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
      }
-    imshow("CONTOURS", drawing);
+    //imshow("CONTOURS", drawing);
 
   // Show in a window
 	vector<double> retvec;
 	getCenter(newContours[0], drawing, retvec);
 
 	//draw target onto image
-	imshow("TARGETCIRCLE", drawing);
+	//imshow("TARGETCIRCLE", drawing);
         
 	( "Contours + TARGET", drawing );
         cout << "WIRE DATA: " <<endl; 
