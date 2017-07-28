@@ -69,7 +69,7 @@ vector<double> Vision::detect_buoy(Mat src){
     double largest_radius = 0;
     double largest_idx = -1;
     for(size_t i = 0; i < radius.size(); i++){
-		if(radius[i] > largest_radius && radius[i] > 10){
+		if(radius[i] > largest_radius && radius[i] > 20){
             largest_radius = radius[i];
             cout << radius[i] << endl;
 	    largest_idx = i;
@@ -78,11 +78,11 @@ vector<double> Vision::detect_buoy(Mat src){
     }
 
 	//push the largest on
-	vector<double> rvec;
+        vector<double> rvec;
 	if(largest_idx != -1){
 	    cout << " FOUND IT ON FRAME" << endl;
         candidates.push_back(center[largest_idx]);
-	    rvec = outputBuoyAngle(src, candidates); 
+	     outputBuoyAngle(src, candidates, rvec); 
 	}
 	else{
 	    cout << "Nothing detected, Angle to travel : -1" << endl;
@@ -92,21 +92,23 @@ vector<double> Vision::detect_buoy(Mat src){
 		return rvec;
 	}
 
+        cout << __LINE__ << endl;
     Mat drawing = Mat::zeros(src_colored.size(), CV_8UC3);
    	Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0,255), rng.uniform(0,255));
 	drawContours(drawing, contours_poly, largest_idx, color, 1, 8, vector<Vec4i>(), 0, Point());
     rectangle(drawing, boundRect[largest_idx].tl(), boundRect[largest_idx].br(), color, 2, 8, 0);
 
-	//imshow("buoy contour", drawing);
+	imshow("buoy contour", drawing);
 	
 
 
 	//return the vector
+        cout << boundRect[largest_idx].area()<< endl;
 	rvec.push_back(boundRect[largest_idx].area());
 	return rvec;
 }
 
-vector<double> Vision::outputBuoyAngle(Mat &src, vector<Point2f> &candidates){
+void Vision::outputBuoyAngle(Mat &src, vector<Point2f> &candidates, vector<double> &rvec){
 	//using the colored image
 	//we have a point, which is the center of a cirlce, should only have 1.
 	int midX = src.size().width / 2;
@@ -154,7 +156,6 @@ vector<double> Vision::outputBuoyAngle(Mat &src, vector<Point2f> &candidates){
 		vector<double> r;
 		r.push_back(-1);
 		r.push_back(-1);
-		return r;
 	}	
 
 	double adj = abs(targetx - midX);
@@ -179,9 +180,11 @@ vector<double> Vision::outputBuoyAngle(Mat &src, vector<Point2f> &candidates){
 		cout << "Angle to travel : " << -angle << endl;
 	}
 
-	vector<double> rvec;
+        cout << __LINE__ << endl;
 	rvec.push_back(angle);
+        cout << __LINE__ << endl;
 	rvec.push_back(sqrt((opp*opp) + (adj*adj)));
+        cout << __LINE__ << endl;
 }
 
 
@@ -317,7 +320,7 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 
   // Show in a window
   //namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
-  //imshow( "Contours", drawing );
+  imshow( "Contours", drawing );
 
 
 	//need to do this*****

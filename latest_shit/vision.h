@@ -37,7 +37,7 @@ class Vision{
 
 		//buoy helpers
 		vector<double> detect_buoy(Mat src);
-		vector<double> outputBuoyAngle(Mat &src, vector<Point2f> &candidates);
+		void outputBuoyAngle(Mat &src, vector<Point2f> &candidates, vector<double> &rvec);
 
 		//gate helpers
 		
