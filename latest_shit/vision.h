@@ -45,6 +45,8 @@ class Vision{
 		//wire helpers
 		Mat color(Mat src);
 		vector<double> outputWireAngle(Mat &src_colored);
+		void getCenter(vector<Point> contours, Mat &drawing, vector<double> &retvec);
+		void wireAngle(double targetx, double targety, vector<double> &retvec);
 
 };
 

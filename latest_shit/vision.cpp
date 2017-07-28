@@ -233,6 +233,7 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 		vector<double> r;
 		r.push_back(-1);
 		r.push_back(-1);
+		r.push_back(-1);
 		return r;
 	}
 
@@ -319,15 +320,110 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
      }
 
   // Show in a window
-  //namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
-  imshow( "Contours", drawing );
+	vector<double> retvec;
+	getCenter(newContours[0], drawing, retvec);
 
+	//draw target onto image
 
+	( "Contours", drawing );
 	//need to do this*****
-	vector<double> r;
+/*	vector<double> r;
 	r.push_back(-1);
 	r.push_back(-1);
 	r.push_back(-1);
-	return r;
+*/	
+	return retvec;
+
+}
+
+
+void Vision::getCenter(vector<Point> contours, Mat &drawing, vector<double> &retvec){
+	Point pt;
+	int minx, miny = INT_MAX;
+	int maxx, maxy = INT_MIN;
+	
+	for(int i= 0; i < contours.size(); i++){
+		pt = contours[i];
+		if(pt.x < minx){
+			minx = pt.x;
+			miny = pt.y;
+		}
+		if(pt.x > maxx){
+			maxx = pt.x;
+			maxy = pt.y;
+		}
+	}
+
+	//calculate y as .6 * length of this
+	double yup = .6 * (maxx - minx);
+	//point to go to is 
+	double x = (maxx - minx);	
+
+	double y = (maxy - miny);
+	y += yup;
+
+	//draw the target
+	circle(drawing, Point(x,y), 5, Scalar(0, 255, 0), 3, 8, 0);
+
+	wireAngle(x, y, retvec);
+
+}
+
+void Vision::wireAngle(double targetx, double targety, vector<double> &retvec){
+	//using the colored image
+	//we have a point, which is the center of a cirlce, should only have 1.
+	int midX = src.size().width / 2;
+	int midY = src.size().height / 2;
+
+	//now we know what point  we are going to travel to, so we want to calculate the angle
+
+	//triangle
+	//	    adj
+	//       --------
+	//	  \	|
+	//	   \	|
+	//	    \	|     opp			
+	//	     \	|
+	//	      \	|
+	//	       \|
+
+	//	cout << "target x = " << targetx << " target y = " << targety << endl;
+	//	cout << "midx = " << midX << " midy = " << midY << endl;
+
+	if(targetx == -1 && targety == -1){
+		cout << "Nothing detected, Angle to travel : -1" << endl;
+		return;
+	}	
+
+	float adj = abs(targetx - midX);
+	float opp = abs(targety - midY);
+	double angle = atan(opp / adj);
+
+	double radius = sqrt(adj * adj + opp * opp);
+	retvec.push_back(angle);
+	retvec.push_back(radius);
+	retvec.push_back(-1);
+	int quadrant;
+	if(targety < midY && targetx > midX){
+		quadrant = 1;
+		cout << "Angle to travel : " << angle;
+		cout <<  "	" << radius << endl;
+	}
+	else if(targety < midY && targetx < midX){
+		quadrant = 2;
+		cout << "Angle to travel : " << 3.14159 - angle;
+		cout <<  "	" << radius << endl;
+	}
+	else if(targety > midY && targetx < midX){
+		quadrant = 3;
+		cout << "Angle to travel : " << 3.14159 + angle;
+		cout <<  "	" << radius << endl;
+	}
+	else{
+		quadrant = 4;
+		cout << "Angle to travel : " << 3.14159 + 1.5707 + angle;
+		cout <<  "	" << radius << endl;
+	}
+	
 }
 
