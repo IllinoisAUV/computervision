@@ -320,11 +320,7 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 	getCenter(newContours[0], drawing, retvec);
 
 	//draw target onto image
-        
-	( "Contours + TARGET", drawing );
-        cout << "WIRE DATA: " <<endl; 
 	return retvec;
-
 }
 
 
@@ -355,6 +351,7 @@ void Vision::getCenter(vector<Point> contours, Mat &drawing, vector<double> &ret
 
 	//draw the target
 	circle(drawing, Point(x,y), 5, Scalar(0, 255, 0), 3, 8, 0);
+        imshow("WIRE TARGFET" , drawing);
 
 	wireAngle(x, y, retvec);
 
