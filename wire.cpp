@@ -145,8 +145,6 @@ void findWires(Mat &src_colored){
 	vector<vector<Point> > newContours;
 	newContours.resize(sizeOfNewContours);
 
-//	cout << contours[idx1] << endl << contours[idx2] << endl << contours[idx3] << endl;
-//	for(int j =0; j < newContours.size(); j++){
 		if(big1 > minSizeContour){
 				for(int i = 0; i < contours[idx1].size(); i++){
 				newContours[0].push_back(contours[idx1][i]);
@@ -162,7 +160,6 @@ void findWires(Mat &src_colored){
 				newContours[2].push_back(contours[idx3][i]);
 			}
 		}
-//	}
 
 	for( int i = 0; i < newContours.size(); i++ )
 	   { minRect[i] = minAreaRect( Mat(newContours[i]) );
@@ -170,26 +167,28 @@ void findWires(Mat &src_colored){
          { minEllipse[i] = fitEllipse( Mat(newContours[i]) ); }
      }
 
-     double center = getCenter(newContours[0]);
+     double centerX = getCenter(newContours[0]);
 
-  /// Draw contours + rotated rects + ellipses
-	 Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
-  for( int i = 0; i< newContours.size(); i++ )
-     {
-       Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-       // contour
-       drawContours( drawing, newContours, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
-       // ellipse
-       //ellipse( drawing, minEllipse[i], color, 2, 8 );
-       // rotated rectangle
-       Point2f rect_points[4]; minRect[i].points( rect_points );
-       for( int j = 0; j < 4; j++ )
-          line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
-     }
+     return outputAngle(threshold_output, centerX);
 
-  // Show in a window
-  namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
-  imshow( "Contours", drawing );
+  // /// Draw contours + rotated rects + ellipses
+	 // Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+  // for( int i = 0; i< newContours.size(); i++ )
+  //    {
+  //      Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+  //      // contour
+  //      drawContours( drawing, newContours, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+  //      // ellipse
+  //      //ellipse( drawing, minEllipse[i], color, 2, 8 );
+  //      // rotated rectangle
+  //      Point2f rect_points[4]; minRect[i].points( rect_points );
+  //      for( int j = 0; j < 4; j++ )
+  //         line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
+  //    }
+
+  // // Show in a window
+  // namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
+  // imshow( "Contours", drawing );
 }
 
 
@@ -199,6 +198,7 @@ double getCenter(vector<Point> contours){
 		return -1;
 	minx = contours[0].x();
 	maxx = minx;
+	outY = contours[0].y();
 	for (int i = 0; i<contours.size(); i++)
 	{
 		if(contours[i].x()>maxx)
@@ -206,13 +206,80 @@ double getCenter(vector<Point> contours){
 		else if(contours[i].(x)<minx)
 			minx = contours[i].x();
 	}
+	double dist = 0.5 * (maxx-minx);
+	outY -= dist;
 	return (minx+maxx)/2;
 
 }
 
-// boolean isHorizontal(int minX, int maxX, int minY, int maxY) {
+vector<double> outputAngle(Mat src, double inputX){
+	//using the colored image
+	//we have a point, which is the center of a cirlce, should only have 1.
+	int midX = src.size().width / 2;
+	int midY = src.size().height / 2;
+	int targetx = -1, targety = -1;
+	targetX = inputX;
+	y = midY;
 
-// }
+	//now we know what point  we are going to travel to, so we want to calculate the angle
+
+	//triangle
+	//	    adj
+	//       --------
+	//	  \	|
+	//	   \	|
+	//	    \	|     opp			
+	//	     \	|
+	//	      \	|
+	//	       \|
+
+	//	cout << "target x = " << targetx << " target y = " << targety << endl;
+	//	cout << "midx = " << midX << " midy = " << midY << endl;
+
+	if(targetx == -1 && targety == -1){
+		cout << "Nothing detected, Angle to travel : -1" << endl;
+		return;
+	}	
+
+	float adj = abs(targetx - midX);
+	float opp = abs(targety - midY);
+	angle = atan(opp / adj);
+
+	radius = sqrt(adj * adj + opp * opp);
+	vector<double> res;
+	res.push_back(angle);
+	res.push_back(radius);
+	res.push_back(-1);
+	int quadrant;
+	if(targety < midY && targetx > midX){
+		quadrant = 1;
+		cout << "Angle to travel : " << angle;
+		cout <<  "	" << radius << endl;
+		return res;
+	}
+	else if(targety < midY && targetx < midX){
+		quadrant = 2;
+		cout << "Angle to travel : " << 3.14159 - angle;
+		cout <<  "	" << radius << endl;
+		res[0] = 3.14159 - angle;
+		return res;
+	}
+	else if(targety > midY && targetx < midX){
+		quadrant = 3;
+		cout << "Angle to travel : " << 3.14159 + angle;
+		cout <<  "	" << radius << endl;
+		res[0] = 3.14159 + angle;
+		return res;
+	}
+	else{
+		quadrant = 4;
+		cout << "Angle to travel : " << 3.14159 + 1.5707 + angle;
+		cout <<  "	" << radius << endl;
+		res[0] = 3.14159 + 1.5707 + angle;
+		return res;
+	}
+	
+}
 
 
 
