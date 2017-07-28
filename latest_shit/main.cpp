@@ -22,8 +22,8 @@ int main(){
 		cout << frame_count << endl;
         frame_count++;
 
-        if(frame_count % 10 == 0 && frame_count > 1700){
-			retvals = v.findTargets();
+        if(frame_count % 10 == 0 && frame_count > 2500){
+	    retvals = v.findTargets();
             imshow("src", v.src);
         }
 		cout << endl << "vgate_angle: " << retvals.vgate_angle<< " vgate_radius: " << retvals.vgate_radius << " vgate_area: " << retvals.vgate_area << " buoy_angle: " << retvals.buoy_angle << " buoy_radius: " << retvals.buoy_radius << " buoy_area: " << retvals.buoy_area << " wire_angle: " << retvals.wire_angle << " wire_radius: " << retvals.wire_radius << " wire_area: " << retvals.wire_area << endl;

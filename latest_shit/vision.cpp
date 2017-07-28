@@ -13,6 +13,7 @@ targets_data Vision::findTargets(){
 	ret.buoy_radius = r[1];
 	ret.buoy_area = r[2];
 	Mat src_colored = color(this->src);
+        imshow("scoolored, " , src_colored);
 	r = outputWireAngle(src_colored);
 	ret.wire_angle = r[0];
 	ret.wire_radius = r[1];
@@ -190,12 +191,6 @@ void Vision::outputBuoyAngle(Mat &src, vector<Point2f> &candidates, vector<doubl
 
 Mat Vision::color(Mat src){
 	Mat src_hsv, src_colored;
-	blur(src_hsv,src_hsv,Size(3,3),Point(-1,-1));
-	
-	erode(src_hsv, src_hsv, getStructuringElement(MORPH_ELLIPSE, Size(3,3)));
-	erode(src_hsv, src_hsv, getStructuringElement(MORPH_ELLIPSE, Size(3,3)));
-	dilate(src_hsv, src_hsv, getStructuringElement(MORPH_ELLIPSE, Size(31,31)));
-	
 	cvtColor(src, src_hsv, COLOR_BGR2HSV);
 	
 	int lower_bound1, lower_bound2;
@@ -228,6 +223,9 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 	threshold( src_colored, threshold_output, thresh, 255, THRESH_BINARY );
 	/// Find contours
 	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+
+        imshow("WIRE THREASHOLD", threshold_output);
 
 	if(contours.size() < 3){
 		vector<double> r;
@@ -279,8 +277,6 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 	vector<vector<Point> > newContours;
 	newContours.resize(sizeOfNewContours);
 
-//	cout << contours[idx1] << endl << contours[idx2] << endl << contours[idx3] << endl;
-//	for(int j =0; j < newContours.size(); j++){
 		if(big1 > minSizeContour){
 				for(int i = 0; i < contours[idx1].size(); i++){
 				newContours[0].push_back(contours[idx1][i]);
@@ -296,7 +292,6 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
 				newContours[2].push_back(contours[idx3][i]);
 			}
 		}
-//	}
 
 	for( int i = 0; i < newContours.size(); i++ )
 	   { minRect[i] = minAreaRect( Mat(newContours[i]) );
@@ -318,20 +313,16 @@ vector<double> Vision::outputWireAngle(Mat &src_colored){
        for( int j = 0; j < 4; j++ )
           line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
      }
+    imshow("CONTOURS", drawing);
 
   // Show in a window
 	vector<double> retvec;
 	getCenter(newContours[0], drawing, retvec);
 
 	//draw target onto image
-
-	( "Contours", drawing );
-	//need to do this*****
-/*	vector<double> r;
-	r.push_back(-1);
-	r.push_back(-1);
-	r.push_back(-1);
-*/	
+        
+	( "Contours + TARGET", drawing );
+        cout << "WIRE DATA: " <<endl; 
 	return retvec;
 
 }
